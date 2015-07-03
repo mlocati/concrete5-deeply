@@ -8,20 +8,59 @@ try {
             throw new Exception('Please run composer.');
         }
     }
-    $webRoot = '';
     $optionsDef = array(
+        'h' => 'help',
         'w:' => 'webroot:',
+        'b:' => 'blocks:'
     );
+    $webRoot = '';
+    $direct = array();
     foreach (getopt(implode('', array_keys($optionsDef)), array_values($optionsDef)) as $optionKey => $optionValue) {
         switch ($optionKey) {
+            case'h':
+            case 'help':
+                echo "Options:\n";
+                echo " -w <path>                   : path to concrete5 web root\n";
+                echo "   Long syntax: --webroot=...\n";
+                echo " -b <bID1>[,bID2[,bID3, ...]]: analyze block(s) by id\n";
+                echo "   Long syntax: --blocks=...\n";
+                die(0);
             case 'w':
             case 'webroot':
                 $webRoot = $optionValue;
                 break;
+            case 'b':
+            case 'blocks':
+                if (!isset($direct['blocks'])) {
+                    $direct['blocks'] = array();
+                }
+                foreach(explode(' ', str_replace(array(',', ';'), ' ', $optionValue)) as $b) {
+                    if (!preg_match('/^[1-9][0-9]*$/', $b)) {
+                        throw new Exception("Invalid block identifier: $b");
+                    }
+                    $b = (int) $b;
+                    if (!in_array($b, $direct['blocks'])) {
+                        $direct['blocks'][] = $b;
+                    }
+                }
         }
     }
     C5Deeply\Connector::startCore($webRoot);
-    C5DeeplyCLIMenu();
+    if (empty($direct)) {
+        C5DeeplyCLIMenu();
+    } else {
+        foreach ($direct as $what => $data) {
+            switch ($what) {
+                case 'blocks':
+                    foreach ($data as $bID) {
+                        $analyzer = new C5Deeply\Analyzer();
+                        $analyzer->inspectBlock($bID);
+                    }
+                    break;
+                    
+            }
+        }
+    }
     die(0);
 } catch (Exception $x) {
     echo $x->getMessage();
